@@ -2,9 +2,9 @@ import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from pydub import AudioSegment
-import subprocess  # Menambahkan untuk mengonversi video dengan ffmpeg
+import subprocess
 
-BOT_TOKEN = "TOKEN_KAMU"
+BOT_TOKEN = "8136762541:AAHoXifsCDi0Ny3-yovirnTRPfIIPmr1ZtU"
 
 # Fungsi untuk memulai bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -14,22 +14,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def convert_to_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = None
     ext = None
+    wait_message = None
 
     # Cek jenis file (audio, voice, document, atau video)
     if update.message.audio:
         file = await update.message.audio.get_file()
         ext = "mp3"
+        wait_message = await update.message.reply_text("⏳")
     elif update.message.voice:
         file = await update.message.voice.get_file()
         ext = "ogg"
+        wait_message = await update.message.reply_text("⏳")
     elif update.message.document:
         file = await update.message.document.get_file()
         ext = update.message.document.file_name.split(".")[-1].lower()
+        if ext == "mp3":
+            wait_message = await update.message.reply_text("⏳")
     elif update.message.video:
-        # Proses untuk video
-        await update.message.reply_text("Mohon tunggu... Proses konversi video ke audio sedang berjalan.")
         file = await update.message.video.get_file()
         ext = "mp4"
+        wait_message = await update.message.reply_text("⏳")
     else:
         await update.message.reply_text("Kirim file audio atau video ya.")
         return
@@ -44,29 +48,30 @@ async def convert_to_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Jika video, konversi ke audio dengan ffmpeg
         if ext == "mp4":
             audio_path = f"{file.file_id}.mp3"
-            # Mengonversi video ke audio menggunakan ffmpeg
             subprocess.run(['ffmpeg', '-i', input_path, audio_path])
-            input_path = audio_path  # Ganti input_path dengan file audio yang dihasilkan
+            input_path = audio_path
 
-        # Konversi file audio (mp3 atau ogg) menjadi ogg format untuk voice chat
+        # Konversi file audio menjadi ogg
         audio = AudioSegment.from_file(input_path)
-
-        # Peningkatan kualitas suara
         audio = audio.set_frame_rate(48000).set_channels(2)
         audio = audio.normalize()
-
-        # Ekspor ke ogg dengan bitrate tinggi
         audio.export(output_path, format="ogg", codec="libopus", bitrate="128k")
 
-        # Mengirimkan file voice chat ke pengguna
+        # Kirim voice chat
         with open(output_path, "rb") as voice:
             await update.message.reply_voice(voice=voice)
 
+        # Hapus pesan "⏳" setelah selesai
+        if wait_message:
+            await wait_message.delete()
+
     except Exception as e:
+        if wait_message:
+            await wait_message.delete()
         await update.message.reply_text(f"Terjadi kesalahan saat konversi: {e}")
 
     finally:
-        # Menghapus file sementara setelah proses selesai
+        # Bersihkan file sementara
         if os.path.exists(input_path):
             os.remove(input_path)
         if os.path.exists(output_path):
