@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from pydub import AudioSegment
 import subprocess
 
-BOT_TOKEN = "8136762541:AAHoXifsCDi0Ny3-yovirnTRPfIIPmr1ZtU"
+BOT_TOKEN = "___"
 
 # Fungsi untuk memulai bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
